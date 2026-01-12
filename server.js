@@ -1,12 +1,22 @@
-const express = require('express');
-const nodemailer = require('nodemailer');
-const fs = require('fs');
-const path = require('path');
+import express from 'express';
+import nodemailer from 'nodemailer';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+
+// Configuración ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config();
+
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static(__dirname)); // Servir archivos estáticos
 
 // Dados em memória
 let attackHistory = [];
@@ -252,17 +262,25 @@ function generateRandomName(targetEmail, index) {
     return names[Math.floor(Math.random() * names.length)];
 }
 
-// SISTEMA DE TRACKING - MODIFICADO PARA USAR EMAIL EN LUGAR DE ID
+// SISTEMA DE TRACKING - CORREGIDO PARA PRODUCCIÓN
 function generateTrackingPixel(targetEmail) {
+    const baseUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://' + (process.env.RENDER_EXTERNAL_HOSTNAME || process.env.HOSTNAME || 'marketing-email-by-jorge.onrender.com')
+        : `http://localhost:${PORT}`;
+    
     return `<!-- Tracking Pixel -->
 <div style="display:none; font-size:0; line-height:0;">
-    <img src="http://localhost:${PORT}/track/open/${encodeURIComponent(targetEmail)}" width="1" height="1" alt="" border="0" style="display:block; width:1px; height:1px;"/>
+    <img src="${baseUrl}/track/open/${encodeURIComponent(targetEmail)}" width="1" height="1" alt="" border="0" style="display:block; width:1px; height:1px;"/>
 </div>`;
 }
 
 function trackLinks(htmlContent, targetEmail) {
+    const baseUrl = process.env.NODE_ENV === 'production'
+        ? 'https://' + (process.env.RENDER_EXTERNAL_HOSTNAME || process.env.HOSTNAME || 'marketing-email-by-jorge.onrender.com')
+        : `http://localhost:${PORT}`;
+    
     return htmlContent.replace(/href="(https?:\/\/[^"]*)"/g, 
-        (match, url) => `href="http://localhost:${PORT}/track/click/${encodeURIComponent(targetEmail)}?url=${encodeURIComponent(url)}"`
+        (match, url) => `href="${baseUrl}/track/click/${encodeURIComponent(targetEmail)}?url=${encodeURIComponent(url)}"`
     );
 }
 
@@ -285,7 +303,7 @@ function addTrackingToEmail(htmlContent, targetEmail) {
     return trackedContent;
 }
 
-// ROTAS DE TRACKING - MODIFICADAS PARA USAR EMAIL
+// ROTAS DE TRACKING
 app.get('/track/open/:targetEmail', (req, res) => {
     const { targetEmail } = req.params;
     const decodedEmail = decodeURIComponent(targetEmail);
@@ -361,9 +379,10 @@ app.post('/clear-tracking-data', (req, res) => {
     });
 });
 
-// HTML COMPLETO CORREGIDO
+// HTML COMPLETO CORREGIDO CON RUTAS FIXED
 app.get('/', (req, res) => {
-    res.send(`
+    // Construir el HTML dinámico
+    const html = `
     <!DOCTYPE html>
     <html lang="pt-br">
     <head>
@@ -653,9 +672,9 @@ Equipe de Suporte</textarea>
                 <div style="background: #1a1a2a; padding: 15px; border-radius: 8px; margin: 15px 0;">
                     <h3>🔍 Como funciona el Tracking:</h3>
                     <ul style="color: #ccc; font-size: 14px; line-height: 1.5;">
-                        <li><strong>Pixel Invisible:</strong> Imagen 1x1 transparente en cada email</li>
+                        <li><strong>Pixel Invisible:</strong> Imagen 1x1 transparente em cada email</li>
                         <li><strong>Aberturas:</strong> Se registran cuando el pixel es cargado</li>
-                        <li><strong>Cliques:</strong> Se registran cuando hacen click en links</li>
+                        <li><strong>Cliques:</strong> Se registran cuando fazem click em links</li>
                     </ul>
                 </div>
                 
@@ -952,7 +971,7 @@ Equipe de Suporte</textarea>
                     }
                     
                     document.getElementById('trackingStats').innerHTML = '<div class="stats-badge"><strong>📨 ESTATÍSTICAS:</strong><br>Emails: ' + emailsWithTracking + '<br>Aberturas: ' + totalOpens + '<br>Cliques: ' + totalClicks + '</div>';
-                    document.getElementById('trackingReportsGrid').innerHTML = trackingItems.length > 0 ? trackingItems.join('') : '<div class="log-entry log-info">No hay datos de tracking</div>';
+                    document.getElementById('trackingReportsGrid').innerHTML = trackingItems.length > 0 ? trackingItems.join('') : '<div class="log-entry log-info">No hay dados de tracking</div>';
                     
                 } catch (error) {
                     document.getElementById('trackingStats').innerHTML = '<div class="log-entry log-error">Error al cargar tracking</div>';
@@ -961,7 +980,7 @@ Equipe de Suporte</textarea>
 
             function testTrackingPixel() {
                 const testEmail = 'test@example.com';
-                const pixelUrl = 'http://localhost:${PORT}/track/open/' + encodeURIComponent(testEmail);
+                const pixelUrl = '/track/open/' + encodeURIComponent(testEmail);
                 const img = new Image();
                 img.src = pixelUrl;
                 img.onload = function() {
@@ -1028,10 +1047,12 @@ Equipe de Suporte</textarea>
         </script>
     </body>
     </html>
-    `);
+    `;
+    
+    res.send(html);
 });
 
-// ROTA ULTIMATE HTML ATTACK - MODIFICADA PARA USAR EMAIL EN TRACKING
+// ROTA ULTIMATE HTML ATTACK - CON SMTP CONFIGURABLE
 app.post('/ultimate-html-attack', async (req, res) => {
     const { targets, quantity, subject, message, messageType, apiKey, fromEmail, nameMode, fixedName, tracking } = req.body;
     
@@ -1045,8 +1066,8 @@ app.post('/ultimate-html-attack', async (req, res) => {
         return res.json({ success: false, message: 'Nenhum email target especificado' });
     }
     
-    if (!apiKey || !apiKey.startsWith('SG.')) {
-        return res.json({ success: false, message: 'API Key do SendGrid inválida' });
+    if (!apiKey) {
+        return res.json({ success: false, message: 'API Key não especificada' });
     }
     
     if (!fromEmail) {
@@ -1054,13 +1075,30 @@ app.post('/ultimate-html-attack', async (req, res) => {
     }
 
     try {
-        const transporter = nodemailer.createTransport({
-            host: 'smtp.sendgrid.net',
-            port: 587,
-            secure: false,
-            auth: { user: 'apikey', pass: apiKey },
-            tls: { rejectUnauthorized: false }
+        // Configurar SMTP basado en variables de entorno
+        const smtpConfig = {
+            host: process.env.SMTP_HOST || 'smtp.sendgrid.net',
+            port: process.env.SMTP_PORT || 587,
+            secure: process.env.SMTP_SECURE === 'true',
+            auth: {
+                user: process.env.SMTP_USER || 'apikey',
+                pass: process.env.SMTP_PASS || apiKey
+            },
+            tls: {
+                rejectUnauthorized: false
+            },
+            connectionTimeout: 30000,
+            greetingTimeout: 30000,
+            socketTimeout: 30000
+        };
+
+        console.log('🔧 Configuración SMTP:', {
+            host: smtpConfig.host,
+            port: smtpConfig.port,
+            user: smtpConfig.auth.user
         });
+
+        const transporter = nodemailer.createTransport(smtpConfig);
 
         await transporter.verify();
         console.log('✅ Conexão SMTP OK!');
@@ -1089,7 +1127,6 @@ app.post('/ultimate-html-attack', async (req, res) => {
 
                     let finalMessage = message;
                     
-                    // MODIFICADO: Usar el email del destinatario en lugar de un ID
                     if (tracking === 'enabled' && messageType === 'html') {
                         finalMessage = addTrackingToEmail(message, target);
                     }
@@ -1118,6 +1155,8 @@ app.post('/ultimate-html-attack', async (req, res) => {
                         error: null
                     });
                     
+                    console.log(`✅ Email enviado para: ${target}`);
+                    
                 } catch (error) {
                     targetFailed++;
                     totalFailed++;
@@ -1131,6 +1170,8 @@ app.post('/ultimate-html-attack', async (req, res) => {
                         status: 'error',
                         error: error.message
                     });
+                    
+                    console.log(`❌ Erro enviando para ${target}:`, error.message);
                 }
 
                 if (emailIndex < quantity - 1) {
@@ -1255,9 +1296,12 @@ app.get('/download-reports/:format', (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
+// Iniciar servidor
+app.listen(PORT, '0.0.0.0', () => {
     console.log('🚀 KNJ Mail Dominator - HTML ULTIMATE Edition');
     console.log('💣 Access: http://localhost:' + PORT);
+    console.log('🌐 Production URL: https://marketing-email-by-jorge.onrender.com');
     console.log('📊 Total emails salvos:', emailReports.length);
     console.log('📈 Total tracking data:', Object.keys(trackingData).length);
+    console.log('🔧 Environment:', process.env.NODE_ENV || 'development');
 });
