@@ -1,0 +1,14 @@
+{
+  "jorgitom18@gmail.com": {
+    "email": "jorgitom18@gmail.com",
+    "opens": 0,
+    "clicks": [
+      {
+        "url": "https://exemplo.com/verificar-seguranca",
+        "timestamp": "2025-11-30T01:03:51.932Z",
+        "ip": "::1"
+      }
+    ],
+    "firstOpen": "2025-11-30T01:03:51.932Z"
+  }
+}

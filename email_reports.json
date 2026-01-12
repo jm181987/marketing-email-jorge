@@ -1,0 +1,24 @@
+[
+  {
+    "timestamp": "2025-11-30T01:03:34.734Z",
+    "to": "jorgitom18@gmail.com",
+    "fromEmail": "jorgitom18@gmail.com",
+    "fromName": "NOC Center",
+    "subject": "oiiiiiiiii",
+    "status": "success",
+    "messageId": "<94819eed-5f8e-23d7-db3d-d122175122a2@gmail.com>",
+    "trackingEnabled": true,
+    "error": null
+  },
+  {
+    "timestamp": "2026-01-12T22:40:55.979Z",
+    "to": "jorgitom18@gmail.com",
+    "fromEmail": "jorgitom18@gmail.com",
+    "fromName": "Departamento de Tecnologia",
+    "subject": "Atualização Importante do Sistema",
+    "status": "success",
+    "messageId": "<42338084-503d-40a0-bcc3-08591ad9f56b@gmail.com>",
+    "trackingEnabled": true,
+    "error": null
+  }
+]
