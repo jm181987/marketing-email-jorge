@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import cors from 'cors';  // <-- AÑADE ESTO
 
 // Configuración ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -13,6 +14,12 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Middleware IMPORTANTE: cors debe ir primero
+app.use(cors());  // <-- AÑADE ESTO
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(__dirname));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -1305,3 +1312,4 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log('📈 Total tracking data:', Object.keys(trackingData).length);
     console.log('🔧 Environment:', process.env.NODE_ENV || 'development');
 });
+
